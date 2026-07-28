@@ -1,0 +1,33 @@
+name: aset_gudang_komdigi
+description: Aplikasi Manajemen Aset Digital Berbasis QR-Code - Gudang Komdigi Medan
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  mobile_scanner: ^5.2.3       # scan QR-code pakai kamera
+  geolocator: ^13.0.1          # ambil koordinat GPS (GIS)
+  http: ^1.2.2                 # koneksi ke API Laravel
+  provider: ^6.1.2             # state management sederhana
+  flutter_svg: ^2.0.10+1       # render gambar QR-code format SVG dari server
+  flutter_map: ^7.0.2          # tampilkan peta (GIS)
+  latlong2: ^0.9.1             # tipe data koordinat lat/long
+  url_launcher: ^6.3.1         # buka link download laporan Excel/PDF
+  shared_preferences: ^2.3.2   # simpan token login di device
+  cupertino_icons: ^1.0.8
+  pdf: ^3.11.1                 # bikin dokumen PDF (buat cetak QR code)
+  printing: ^5.13.4            # dialog cetak / simpan PDF (jalan di Web juga)
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
