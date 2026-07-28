@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/asset.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -31,6 +32,7 @@ class _TambahBarangScreenState extends State<TambahBarangScreen> {
   String? _kategoriTerpilih;
   String? _ruanganTerpilih;
   int _jumlah = 1;
+  int? _slotSedangUpload; // buat galeri foto setelah barang (tunggal) berhasil dibuat
 
   @override
   void initState() {
@@ -125,6 +127,101 @@ class _TambahBarangScreenState extends State<TambahBarangScreen> {
     } finally {
       if (mounted) setState(() => _menyimpan = false);
     }
+  }
+
+  Future<void> _pilihDanUploadFoto(int slot) async {
+    if (_asetTersimpan == null) return;
+    try {
+      final picker = ImagePicker();
+      final XFile? file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+      if (file == null) return;
+
+      setState(() => _slotSedangUpload = slot);
+      final bytes = await file.readAsBytes();
+      final assetBaru = await ApiService.uploadFotoBarang(
+        assetId: _asetTersimpan!.id,
+        slot: slot,
+        bytes: bytes,
+        namaFile: file.name,
+      );
+      if (mounted) setState(() => _asetTersimpan = assetBaru);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memilih/upload foto: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _slotSedangUpload = null);
+    }
+  }
+
+  Future<void> _hapusFotoSlot(int slot) async {
+    if (_asetTersimpan == null) return;
+    setState(() => _slotSedangUpload = slot);
+    try {
+      final assetBaru = await ApiService.hapusFotoBarang(assetId: _asetTersimpan!.id, slot: slot);
+      if (mounted) setState(() => _asetTersimpan = assetBaru);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menghapus foto: $e')));
+    } finally {
+      if (mounted) setState(() => _slotSedangUpload = null);
+    }
+  }
+
+  // Galeri 3 slot foto, ditampilkan begitu barang (tunggal) berhasil dibuat -
+  // admin bisa langsung lampirkan foto tanpa harus balik lagi ke Detail Barang.
+  Widget _buildGaleriFotoBaru() {
+    final foto = _asetTersimpan!.fotoUrls;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Foto Barang (opsional, maks 3)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 90,
+          child: Row(
+            children: List.generate(3, (i) {
+              final slot = i + 1;
+              final url = foto[i];
+              final sedangProses = _slotSedangUpload == slot;
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: i < 2 ? 8 : 0),
+                  child: GestureDetector(
+                    onTap: sedangProses
+                        ? null
+                        : (url != null ? null : () => _pilihDanUploadFoto(slot)),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.black12),
+                        image: url != null ? DecorationImage(image: NetworkImage(url), fit: BoxFit.cover) : null,
+                      ),
+                      child: sedangProses
+                          ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                          : (url == null
+                              ? const Center(child: Icon(Icons.add_a_photo_outlined, color: Colors.black38, size: 24))
+                              : Align(
+                                  alignment: Alignment.topRight,
+                                  child: GestureDetector(
+                                    onTap: () => _hapusFotoSlot(slot),
+                                    child: Container(
+                                      margin: const EdgeInsets.all(4),
+                                      padding: const EdgeInsets.all(2),
+                                      decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                                      child: const Icon(Icons.close, color: Colors.white, size: 14),
+                                    ),
+                                  ),
+                                )),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ],
+    );
   }
 
   void _tambahLagi() {
@@ -498,7 +595,9 @@ class _TambahBarangScreenState extends State<TambahBarangScreen> {
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.black54, fontSize: 13),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
+          _buildGaleriFotoBaru(),
+          const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             height: 56,

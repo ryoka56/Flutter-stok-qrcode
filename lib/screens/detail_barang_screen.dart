@@ -47,12 +47,12 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
   }
 
   Future<void> _pilihDanUploadFoto(int slot) async {
-    final picker = ImagePicker();
-    final XFile? file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (file == null) return;
-
-    setState(() => _slotSedangUpload = slot);
     try {
+      final picker = ImagePicker();
+      final XFile? file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+      if (file == null) return;
+
+      setState(() => _slotSedangUpload = slot);
       final bytes = await file.readAsBytes();
       final assetBaru = await ApiService.uploadFotoBarang(
         assetId: _asset.id,
@@ -62,7 +62,7 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
       );
       if (mounted) setState(() => _asset = assetBaru);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal upload foto: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memilih/upload foto: $e')));
     } finally {
       if (mounted) setState(() => _slotSedangUpload = null);
     }
