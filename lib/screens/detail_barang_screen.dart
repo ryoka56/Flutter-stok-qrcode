@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/asset.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -25,11 +26,17 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
   bool _menyimpan = false;
   String? _token;
 
+  // Salinan mutable, biar bisa langsung update tampilan foto tanpa harus
+  // pop layar ini dan refresh dari awal tiap kali upload/hapus foto.
+  late Asset _asset;
+  int? _slotSedangUpload; // null = gak ada yang lagi diproses
+
   final List<String> _pilihanStatus = ['tersedia', 'dipinjam', 'rusak'];
 
   @override
   void initState() {
     super.initState();
+    _asset = widget.asset;
     _namaController = TextEditingController(text: widget.asset.namaBarang);
     _kategoriController = TextEditingController(text: widget.asset.kategori);
     _deskripsiController = TextEditingController(text: widget.asset.deskripsi ?? '');
@@ -37,6 +44,53 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
     AuthService.getToken().then((t) {
       if (mounted) setState(() => _token = t);
     });
+  }
+
+  Future<void> _pilihDanUploadFoto(int slot) async {
+    final picker = ImagePicker();
+    final XFile? file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (file == null) return;
+
+    setState(() => _slotSedangUpload = slot);
+    try {
+      final bytes = await file.readAsBytes();
+      final assetBaru = await ApiService.uploadFotoBarang(
+        assetId: _asset.id,
+        slot: slot,
+        bytes: bytes,
+        namaFile: file.name,
+      );
+      if (mounted) setState(() => _asset = assetBaru);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal upload foto: $e')));
+    } finally {
+      if (mounted) setState(() => _slotSedangUpload = null);
+    }
+  }
+
+  Future<void> _hapusFotoSlot(int slot) async {
+    setState(() => _slotSedangUpload = slot);
+    try {
+      final assetBaru = await ApiService.hapusFotoBarang(assetId: _asset.id, slot: slot);
+      if (mounted) setState(() => _asset = assetBaru);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menghapus foto: $e')));
+    } finally {
+      if (mounted) setState(() => _slotSedangUpload = null);
+    }
+  }
+
+  void _lihatFotoFullscreen(String url) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(backgroundColor: Colors.black, foregroundColor: Colors.white, elevation: 0),
+          body: Center(child: InteractiveViewer(child: Image.network(url))),
+        ),
+      ),
+    );
   }
 
   Future<void> _simpanPerubahan() async {
@@ -127,6 +181,8 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _buildGaleriFoto(),
+            const SizedBox(height: 16),
             Center(
               child: Container(
                 padding: const EdgeInsets.all(16),
@@ -361,6 +417,84 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Galeri 3 slot foto barang. Mode lihat (petugas/scan/admin non-edit):
+  /// tampilkan foto yang ada aja, tap buat lihat fullscreen. Mode edit
+  /// (admin): tiap slot bisa tambah/ganti/hapus foto sendiri-sendiri.
+  Widget _buildGaleriFoto() {
+    final adaFoto = _asset.fotoUrls.any((f) => f != null);
+
+    if (!_modeEdit && !adaFoto) {
+      return const SizedBox.shrink(); // gak ada foto & lagi gak edit - gak usah tampilin apa-apa
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_modeEdit || adaFoto)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Text('Foto Barang', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+          ),
+        SizedBox(
+          height: 100,
+          child: Row(
+            children: List.generate(3, (i) {
+              final slot = i + 1;
+              final url = _asset.fotoUrls[i];
+              final sedangProses = _slotSedangUpload == slot;
+
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: i < 2 ? 8 : 0),
+                  child: GestureDetector(
+                    onTap: sedangProses
+                        ? null
+                        : (url != null
+                            ? () => _lihatFotoFullscreen(url)
+                            : (_modeEdit ? () => _pilihDanUploadFoto(slot) : null)),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.black12),
+                        image: url != null
+                            ? DecorationImage(image: NetworkImage(url), fit: BoxFit.cover)
+                            : null,
+                      ),
+                      child: sedangProses
+                          ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                          : (url == null
+                              ? (_modeEdit
+                                  ? const Center(
+                                      child: Icon(Icons.add_a_photo_outlined, color: Colors.black38, size: 26),
+                                    )
+                                  : null)
+                              : (_modeEdit
+                                  ? Align(
+                                      alignment: Alignment.topRight,
+                                      child: GestureDetector(
+                                        onTap: () => _hapusFotoSlot(slot),
+                                        child: Container(
+                                          margin: const EdgeInsets.all(4),
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: const BoxDecoration(
+                                              color: Colors.black54, shape: BoxShape.circle),
+                                          child: const Icon(Icons.close, color: Colors.white, size: 14),
+                                        ),
+                                      ),
+                                    )
+                                  : null)),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ],
     );
   }
 

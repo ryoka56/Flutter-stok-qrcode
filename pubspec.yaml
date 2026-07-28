@@ -21,6 +21,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   pdf: ^3.11.1                 # bikin dokumen PDF (buat cetak QR code)
   printing: ^5.13.4            # dialog cetak / simpan PDF (jalan di Web juga)
+  image_picker: ^1.1.2         # pilih foto barang dari galeri/kamera (support Web)
 
 dev_dependencies:
   flutter_test:

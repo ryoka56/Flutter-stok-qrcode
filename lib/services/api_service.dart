@@ -137,6 +137,40 @@ class ApiService {
     if (res.statusCode != 200) throw Exception('Gagal menghapus permanen');
   }
 
+  // POST /assets/{id}/foto - upload/ganti foto di slot 1/2/3 (multipart)
+  static Future<Asset> uploadFotoBarang({
+    required int assetId,
+    required int slot,
+    required List<int> bytes,
+    required String namaFile,
+  }) async {
+    final token = await AuthService.getToken();
+    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/assets/$assetId/foto'))
+      ..headers['Accept'] = 'application/json'
+      ..fields['slot'] = slot.toString()
+      ..files.add(http.MultipartFile.fromBytes('foto', bytes, filename: namaFile));
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
+
+    final streamed = await request.send();
+    final res = await http.Response.fromStream(streamed);
+    if (res.statusCode == 200) {
+      return Asset.fromJson(jsonDecode(res.body));
+    }
+    throw Exception('Gagal upload foto: ${res.body}');
+  }
+
+  // DELETE /assets/{id}/foto/{slot}
+  static Future<Asset> hapusFotoBarang({required int assetId, required int slot}) async {
+    final res = await http.delete(
+      Uri.parse('$baseUrl/assets/$assetId/foto/$slot'),
+      headers: await _headers(),
+    );
+    if (res.statusCode == 200) {
+      return Asset.fromJson(jsonDecode(res.body));
+    }
+    throw Exception('Gagal menghapus foto: ${res.body}');
+  }
+
   // Hapus banyak barang sekaligus (dipakai fitur pilih & hapus massal)
   static Future<int> hapusAssetBanyak(List<int> ids) async {
     final res = await http.delete(

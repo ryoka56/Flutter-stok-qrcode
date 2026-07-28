@@ -8,6 +8,7 @@ class Asset {
   final String status;
   final LokasiTerakhir? lokasiTerakhir;
   final String? peminjamSaatIni; // cuma terisi kalau status == 'dipinjam'
+  final List<String?> fotoUrls; // selalu 3 slot: [foto1, foto2, foto3], null kalau kosong
 
   Asset({
     required this.id,
@@ -19,9 +20,14 @@ class Asset {
     required this.status,
     this.lokasiTerakhir,
     this.peminjamSaatIni,
+    this.fotoUrls = const [null, null, null],
   });
 
+  /// Foto pertama yang terisi (dipakai buat thumbnail di list Kelola Barang)
+  String? get fotoUtama => fotoUrls.firstWhere((f) => f != null, orElse: () => null);
+
   factory Asset.fromJson(Map<String, dynamic> json) {
+    final fotoJson = json['foto_urls'] as Map<String, dynamic>?;
     return Asset(
       id: json['id'],
       kodeAset: json['kode_aset'],
@@ -34,6 +40,9 @@ class Asset {
           ? LokasiTerakhir.fromJson(json['lokasi_terakhir'])
           : null,
       peminjamSaatIni: json['peminjam_saat_ini'],
+      fotoUrls: fotoJson != null
+          ? [fotoJson['foto_1'], fotoJson['foto_2'], fotoJson['foto_3']]
+          : const [null, null, null],
     );
   }
 }

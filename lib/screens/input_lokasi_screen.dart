@@ -168,6 +168,36 @@ class _InputLokasiScreenState extends State<InputLokasiScreen> {
                   leading: const Icon(Icons.inventory_2),
                 ),
               ),
+              if (asset.fotoUrls.any((f) => f != null)) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 90,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: asset.fotoUrls.where((f) => f != null).length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, i) {
+                      final url = asset.fotoUrls.where((f) => f != null).toList()[i]!;
+                      return GestureDetector(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => Scaffold(
+                              backgroundColor: Colors.black,
+                              appBar: AppBar(backgroundColor: Colors.black, elevation: 0),
+                              body: Center(child: InteractiveViewer(child: Image.network(url))),
+                            ),
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(url, width: 90, height: 90, fit: BoxFit.cover),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),

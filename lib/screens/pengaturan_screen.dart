@@ -1318,12 +1318,17 @@ class _PengaturanScreenState extends State<PengaturanScreen> implements Refresca
                               });
                             },
                           )
-                        : Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                                color: tombolCyan.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
-                            child: const Icon(Icons.inventory_2_rounded, size: 17, color: tombolCyan),
-                          ),
+                        : (a.fotoUtama != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.network(a.fotoUtama!, width: 33, height: 33, fit: BoxFit.cover),
+                              )
+                            : Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                    color: tombolCyan.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+                                child: const Icon(Icons.inventory_2_rounded, size: 17, color: tombolCyan),
+                              )),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
